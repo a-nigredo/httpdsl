@@ -14,7 +14,7 @@ class ParserSpec
 
   import ParserSpec._
 
-  implicit def assertArbitrary: Arbitrary[(String, (String, Operation, String))] = Arbitrary(assertGen)
+  implicit def assertArbitrary: Arbitrary[(String, (String, Operation, StringLiteral))] = Arbitrary(assertGen)
 
   implicit def assertsBodyArbitrary: Arbitrary[(String, Assertion)] = Arbitrary(assertionsGen)
 
@@ -48,7 +48,7 @@ class ParserSpec
       assertSuccess(array.parse("""[[1, 2]]"""), ArrayLiteral(Seq(ArrayLiteral(Seq(NumberLiteral(1), NumberLiteral(2))))))
       assertSuccess(array.parse("""[[1,2],[3,5]]"""), ArrayLiteral(Seq(ArrayLiteral(Seq(NumberLiteral(1), NumberLiteral(2))), ArrayLiteral(Seq(NumberLiteral(3), NumberLiteral(5))))))
     }
-    "parse assertion statement" in prop { data: (String, (String, Operation, String)) =>
+    "parse assertion statement" in prop { data: (String, (String, Operation, StringLiteral)) =>
       val (value, expected) = data
       assertSuccess(assertion.parse(value), expected)
     }
@@ -90,8 +90,8 @@ object ParserSpec {
 
   val assertionsGen: Gen[(String, Assertion)] = {
 
-    val f1 = ("field1 gt f1", FieldAssertion("field1", Gt, StringLiteral("f1")))
-    val f2 = ("field2 lt f2", FieldAssertion("field2", Lt, StringLiteral("f2")))
+    val f1 = ("""field1 gt "f1"""", FieldAssertion("field1", Gt, StringLiteral("f1")))
+    val f2 = ("""field2 lt "f2"""", FieldAssertion("field2", Lt, StringLiteral("f2")))
 
     def and(lOp: String, rOp: String) = s"$lOp and $rOp"
 
@@ -110,12 +110,12 @@ object ParserSpec {
     ))
   }
 
-  val assertGen: Gen[(String, (String, Operation, String))] = for {
+  val assertGen: Gen[(String, (String, Operation, StringLiteral))] = for {
     parts <- Gen.choose(1, 10)
     fieldLength <- Gen.choose(1, 7)
     field <- Gen.listOfN(parts, Gen.listOfN(fieldLength, Gen.oneOf(alphaNumeric)).map(_.mkString)).map(_.mkString("."))
     ops <- Gen.oneOf(IR.Operation.ops)
     value <- Gen.listOfN(parts, Gen.listOfN(fieldLength, Gen.oneOf(alphaNumeric)).map(_.mkString)).map(_.mkString)
-  } yield (s"$field $ops $value", (field, Operation(ops), value))
+  } yield (s"""$field $ops "$value"""", (field, Operation(ops), StringLiteral(value)))
 
 }
