@@ -3,14 +3,14 @@ package dev.nigredo.algebra
 import cats.data.Validated
 import cats.free.Free
 import cats.free.Free.liftF
-import dev.nigredo.compiler.IR.{Assertion, IR, Request}
+import dev.nigredo.compiler.IR.{Assertion, Check, IR, Request}
 import dev.nigredo.algebra.Instruction.{Response, Validation}
 
 sealed trait Instruction[A]
 
 case class SendRequest(request: Request) extends Instruction[Response]
 
-case class CheckResponse(response: Response, assertion: Seq[Assertion]) extends Instruction[Validation]
+case class CheckResponse(response: Response, assertion: Seq[Check]) extends Instruction[Validation]
 
 case class Result(data: Validation) extends Instruction[String]
 
@@ -24,7 +24,7 @@ object Instruction {
   def sendRequest(request: Request): FreeResult[Response] =
     liftF[Instruction, Response](SendRequest(request))
 
-  def checkResponse(assertion: Seq[Assertion], response: Response): FreeResult[Validation] =
+  def checkResponse(assertion: Seq[Check], response: Response): FreeResult[Validation] =
     liftF[Instruction, Validation](CheckResponse(response, assertion))
 
   def result(validation: Validation): FreeResult[String] =

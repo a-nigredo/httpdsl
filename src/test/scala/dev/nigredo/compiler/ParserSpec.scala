@@ -31,6 +31,13 @@ class ParserSpec
     }
 
   "Parser" should {
+    "parse header" in {
+      assertSuccess(header.parse("Content-type:app/json"), ("Content-type", "app/json"))
+      assertSuccess(header.parse("Content:app"), ("Content", "app"))
+    }
+    "parse headers" in {
+      assertSuccess(headers.parse("Content-type:app/json,Header1:v1"), Seq(("Content-type", "app/json"), ("Header1", "v1")))
+    }
     "parse boolean literal" in {
       assertSuccess(boolean.parse("true"), BooleanLiteral(true))
       assertSuccess(boolean.parse("false"), BooleanLiteral(false))
@@ -81,6 +88,21 @@ class ParserSpec
     }
     "not parse check if target is wrong" in {
       assertFailure(Parser.check.parse("check response field1 lt 4"))
+    }
+    "parse send request with headers and check" in {
+      val expr = "Send get request to http://localhost:8080 with headers Content-type:application/json,Accept:test and check response body field1.field2 lt 10"
+      val expected = Seq((Request("http://localhost:8080", Get, Map("Content-type" -> "application/json", "Accept" -> "test")),
+        Seq(Check(ResponseBody, FieldAssertion("field1.field2", Lt, NumberLiteral(10))))))
+      assertSuccess(program.parse(expr), expected)
+    }
+    "parse send request without headers but check" in {
+      val expr = "Send get request to http://localhost:8080 and check response body field1.field2 lt 10"
+      val expected = Seq((Request("http://localhost:8080", Get, Map.empty),
+        Seq(Check(ResponseBody, FieldAssertion("field1.field2", Lt, NumberLiteral(10))))))
+      assertSuccess(program.parse(expr), expected)
+    }
+    "parse send request without headers and check" in {
+      assertSuccess(program.parse("Send get request to http://localhost:8080"), Seq((Request("http://localhost:8080", Get, Map.empty), Nil)))
     }
   }
 

@@ -13,10 +13,9 @@ object Parser {
   val orToken = "or"
   val andToken = "and"
   val multiValueSeparator = ','
-  val alphaNumeric: immutable.IndexedSeq[Char] = ('0' to 'z').filter(_.isLetterOrDigit)
-
-  private def isEndValue(c: Char) = !" \r\n".contains(c)
-
+  val alphaNumeric = ('0' to 'z').filter(_.isLetterOrDigit)
+  val NL = " \r\n"
+  val multiValue = NL.+:(',')
   private val space: all.Parser[Unit] = P(CharsWhileIn(" \r\n")).?
 
   val StringChars = NamedFunction(!"\"\\".contains(_: Char), "StringChars")
@@ -25,17 +24,26 @@ object Parser {
   val string: core.Parser[StringLiteral, Char, String] = P("\"" ~/ CharsWhile(StringChars).rep.! ~/ "\"").map(StringLiteral.apply)
   val array: all.Parser[Literal] =
     P("[" ~/ (boolean | digits | string | array)
-      .rep(sep = CharPred(x => " \r\n".contains(x) || x == ',').rep)
+      .rep(sep = CharPred(x => NL.contains(x) || x == ',').rep)
       .map(ArrayLiteral.apply) ~ "]")
 
   case class NamedFunction[T, V](f: T => V, name: String) extends (T => V) {
-    def apply(t: T) = f(t)
+    def apply(t: T): V = f(t)
 
     override def toString(): String = name
   }
 
-  val header: core.Parser[(String, String), Char, String] =
-    P(CharsWhileIn(('a' to 'z').++:('A' to 'Z').+:('-')).! ~/ ":" ~/ CharPred(isEndValue).rep.!)
+  val header: core.Parser[(String, String), Char, String] = {
+    val separator = Seq('(', ')', '<', '>', '@', ',', ';', ':', '"', '/', '[', ']', '?', '=', '{', '}', 32.toChar, 9.toChar)
+    val CTL = (0 to 31).+:(127.toChar)
+    P(
+      CharsWhileIn((0 to 127)
+        .map(_.toChar)
+        .filter(x => !separator.contains(x) && !CTL.contains(x))).! ~/ ":" ~/ CharPred(x => !multiValue.contains(x)).rep.!
+    )
+  }
+
+  val headers = P(header.rep(min = 1, sep = multiValueSeparator.toString))
 
   //TODO refactoring???
   val path = P(CharIn(alphaNumeric).rep(1) ~/ ".".?)
@@ -74,7 +82,7 @@ object Parser {
     P("check".?
       ~ space
       ~ "response"
-      ~/ space
+      ~ space
       ~/ ("body" | "header").!.map(AssertionTarget.apply).opaque("Assertion type is either missed or wrong. Possible values: body | header")
       ~/ space ~/ assertions
     ).map(Check.apply)
@@ -88,9 +96,9 @@ object Parser {
       ~ space
       ~ "to"
       ~ space
-      ~ P("http" ~/ "s".? ~/ "://" ~/ CharsWhileIn(('0' to 'z').++(Seq('/', '&'))).rep ~/ P("?" ~/ CharsWhileIn('0' to 'z')).?).!
+      ~/ P("http" ~/ "s".? ~/ "://" ~/ CharsWhileIn(('0' to 'z').++(Seq('/', '&'))).rep ~/ P("?" ~/ CharsWhileIn('0' to 'z')).?).!
       ~ space
-      ~ ("with" ~/ space ~/ "headers" ~/ space ~/ P(header.rep(min = 1, sep = multiValueSeparator.toString)) ~ space).?
+      ~ ("with" ~/ space ~/ "headers" ~/ space ~/ headers ~ space).?
       ~ space
       ~ "and".?
       ~ space
