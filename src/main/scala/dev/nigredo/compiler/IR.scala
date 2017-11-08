@@ -14,6 +14,16 @@ object IR {
 
   final case class ArrayLiteral(value: Seq[Literal]) extends Literal
 
+  object Literal {
+    def apply(value: String): Literal = StringLiteral(value)
+
+    def apply(value: Boolean): Literal = BooleanLiteral(value)
+
+    def apply(value: Int): Literal = NumberLiteral(value)
+
+    def apply(value: Seq[Literal]): Literal = ArrayLiteral(value)
+  }
+
   sealed trait Operation
 
   case object Eq extends Operation {
