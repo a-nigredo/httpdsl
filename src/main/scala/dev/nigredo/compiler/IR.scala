@@ -80,20 +80,6 @@ object IR {
     }
   }
 
-  sealed trait AssertionTarget
-
-  case object ResponseBody extends AssertionTarget
-
-  case object ResponseHeader extends AssertionTarget
-
-  object AssertionTarget {
-    def apply(str: String): AssertionTarget =
-      str match {
-        case "body" => ResponseBody
-        case "header" => ResponseHeader
-      }
-  }
-
   sealed trait Assertion
 
   final case class And(lft: Assertion, rgt: Assertion) extends Assertion
@@ -108,11 +94,13 @@ object IR {
     def apply(data: (String, Operation, Literal)): Assertion = new FieldAssertion(data._1, data._2, data._3)
   }
 
-  final case class Check(target: AssertionTarget, assertion: Assertion)
-
-  object Check {
-    def apply(data: (AssertionTarget, Assertion)): Check = new Check(data._1, data._2)
+  sealed trait Check {
+    val assertion: Assertion
   }
+
+  final case class CheckResponseBody(assertion: Assertion) extends Check
+
+  final case class CheckResponseHeader(assertion: Assertion) extends Check
 
   sealed trait Method
 

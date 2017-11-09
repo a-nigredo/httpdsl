@@ -1,17 +1,13 @@
 package dev.nigredo.compiler
 
-import java.io
-
 import dev.nigredo.compiler.IR._
 import fastparse.all._
 import fastparse.{all, core}
 
-import scala.collection.immutable
-
 object Parser {
 
-  val orToken = "or"
-  val andToken = "and"
+  val OrToken = "or"
+  val AndToken = "and"
   val multiValueSeparator = ','
   val alphaNumeric = ('0' to 'z').filter(_.isLetterOrDigit)
   val NL = " \r\n"
@@ -56,14 +52,14 @@ object Parser {
       ~/ (digits | string | array | boolean))
 
   val assertions: core.Parser[Assertion, Char, String] =
-    P(assertionsTerm ~/ (orToken ~/ assertionsTerm).rep).map { x =>
+    P(assertionsTerm ~/ (OrToken ~/ assertionsTerm).rep).map { x =>
       x._2.foldLeft[Assertion](x._1) {
         case (zero, v) => Or(zero, v)
       }
     }
 
   private lazy val assertionsTerm: core.Parser[Assertion, Char, String] =
-    P((assertionsNotFactor ~/ (andToken ~/ assertionsNotFactor).rep).map { x =>
+    P((assertionsNotFactor ~/ (AndToken ~/ assertionsNotFactor).rep).map { x =>
       x._2.foldLeft[Assertion](x._1) {
         case (zero, v) => And(zero, v)
       }
@@ -78,14 +74,22 @@ object Parser {
   private lazy val assertionsFactor: core.Parser[Assertion, Char, String] =
     P(space ~ (assertion.map(FieldAssertion.apply) | "(" ~ assertions ~ ")") ~ space)
 
+  val Body = "body"
+  val Header = "header"
+
   val check: core.Parser[Check, Char, String] =
     P("check".?
       ~ space
       ~ "response"
       ~ space
-      ~/ ("body" | "header").!.map(AssertionTarget.apply).opaque("Assertion type is either missed or wrong. Possible values: body | header")
+      ~/ (Body | Header).!.opaque("Assertion type is either missed or wrong. Possible values: body | header")
       ~/ space ~/ assertions
-    ).map(Check.apply)
+    ).map { x =>
+      x._1 match {
+        case Body => CheckResponseBody(x._2)
+        case Header => CheckResponseHeader(x._2)
+      }
+    }
 
   val program: core.Parser[Seq[IR], Char, String] =
     P("Send"

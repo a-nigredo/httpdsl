@@ -81,10 +81,10 @@ class ParserSpec
       assertSuccess(assertions.parse(data._1), data._2)
     }
     "parse check response body" in {
-      assertSuccess(Parser.check.parse("check response body field1 lt 4"), Check(ResponseBody, FieldAssertion("field1", Lt, NumberLiteral(4))))
+      assertSuccess(Parser.check.parse("check response body field1 lt 4"), CheckResponseBody(FieldAssertion("field1", Lt, NumberLiteral(4))))
     }
     "parse check response header" in {
-      assertSuccess(Parser.check.parse("check response header field1 lt 4"), Check(ResponseHeader, FieldAssertion("field1", Lt, NumberLiteral(4))))
+      assertSuccess(Parser.check.parse("check response header field1 lt 4"), CheckResponseHeader(FieldAssertion("field1", Lt, NumberLiteral(4))))
     }
     "not parse check if target is wrong" in {
       assertFailure(Parser.check.parse("check response field1 lt 4"))
@@ -92,13 +92,13 @@ class ParserSpec
     "parse send request with headers and check" in {
       val expr = "Send get request to http://localhost:8080 with headers Content-type:application/json,Accept:test and check response body field1.field2 lt 10"
       val expected = Seq((Request("http://localhost:8080", Get, Map("Content-type" -> "application/json", "Accept" -> "test")),
-        Seq(Check(ResponseBody, FieldAssertion("field1.field2", Lt, NumberLiteral(10))))))
+        Seq(CheckResponseBody(FieldAssertion("field1.field2", Lt, NumberLiteral(10))))))
       assertSuccess(program.parse(expr), expected)
     }
     "parse send request without headers but check" in {
       val expr = "Send get request to http://localhost:8080 and check response body field1.field2 lt 10"
       val expected = Seq((Request("http://localhost:8080", Get, Map.empty),
-        Seq(Check(ResponseBody, FieldAssertion("field1.field2", Lt, NumberLiteral(10))))))
+        Seq(CheckResponseBody(FieldAssertion("field1.field2", Lt, NumberLiteral(10))))))
       assertSuccess(program.parse(expr), expected)
     }
     "parse send request without headers and check" in {

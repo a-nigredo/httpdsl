@@ -4,7 +4,7 @@ version := "0.1"
 
 scalaVersion := "2.12.4"
 
-scalacOptions ++= Seq("-Ypartial-unification", "-Yrangepos")
+scalacOptions ++= Seq("-Ypartial-unification", "-Yrangepos", "-language:implicitConversions", "-language:higherKinds", "-deprecation")
 
 val http4sVersion = "0.18.0-M4"
 
