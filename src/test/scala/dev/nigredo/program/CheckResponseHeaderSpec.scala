@@ -44,7 +44,7 @@ class CheckResponseHeaderSpec extends Specification {
           }
       }
       val int: Program ~> Id = Ass or Rh
-      val r = CheckResponseHeader(resp)(cr).foldMap(int)
+      val r = checkResponseHeader(resp)(cr).foldMap(int)
       r mustEqual("success")
     }
   }

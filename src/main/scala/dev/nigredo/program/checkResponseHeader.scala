@@ -6,7 +6,7 @@ import dev.nigredo.algebra.ResponseHeader.Program
 import dev.nigredo.algebra.{AssertionOps, CompareValue, ResponseHeaderOps}
 import dev.nigredo.compiler.IR._
 
-object CheckResponseHeader extends (Response => CheckResponseHeader => Free[Program, String]) {
+object checkResponseHeader extends (Response => CheckResponseHeader => Free[Program, String]) {
 
   override def apply(response: Response): CheckResponseHeader => Free[Program, String] = check => {
     val I = implicitly[AssertionOps[Program]]
