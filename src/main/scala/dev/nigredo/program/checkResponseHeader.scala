@@ -5,7 +5,8 @@ import dev.nigredo.Model.Response
 import dev.nigredo.algebra
 import dev.nigredo.algebra.ResponseHeader.Program
 import dev.nigredo.algebra.{AssertionOps, ResponseHeaderOps}
-import dev.nigredo.compiler.IR._
+import dev.nigredo.compiler.Literal
+import dev.nigredo.compiler.model._
 
 object checkResponseHeader extends (Response => CheckResponseHeader => Free[Program, String]) {
 

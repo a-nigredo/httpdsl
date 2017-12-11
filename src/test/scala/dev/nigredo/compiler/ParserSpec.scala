@@ -1,7 +1,7 @@
 package dev.nigredo.compiler
 
-import dev.nigredo.compiler.IR.{Literal, _}
-import dev.nigredo.compiler.Parser._
+import dev.nigredo.compiler.model._
+import dev.nigredo.compiler.parser._
 import fastparse.core.Parsed
 import org.scalacheck.{Arbitrary, Gen}
 import org.specs2.ScalaCheck
@@ -39,21 +39,21 @@ class ParserSpec
       assertSuccess(headers.parse("Content-type:app/json,Header1:v1"), Seq(("Content-type", "app/json"), ("Header1", "v1")))
     }
     "parse boolean literal" in {
-      assertSuccess(boolean.parse("true"), Literal.Boolean(true))
-      assertSuccess(boolean.parse("false"), Literal.Boolean(false))
+      assertSuccess(boolean.parse("true"), Literal(true))
+      assertSuccess(boolean.parse("false"), Literal(false))
     }
     "parse number literal" in prop { data: Int =>
-      assertSuccess(digits.parse(data.toString), Literal.Int(data))
+      assertSuccess(digits.parse(data.toString), Literal(data))
     }.setGen(Gen.choose(1, Int.MaxValue))
     "parse string literal" in prop { data: String =>
-      assertSuccess(string.parse(s""""$data""""), Literal.String(data))
+      assertSuccess(string.parse(s""""$data""""), Literal(data))
     }.setGen(Gen.alphaNumStr)
     "parse array literal" in {
-      assertSuccess(array.parse("[true, false]"), Literal.Array(Seq(Literal.Boolean(true), Literal.Boolean(false))))
-      assertSuccess(array.parse("[1, 2]"), Literal.Array(Seq(Literal.Int(1), Literal.Int(2))))
-      assertSuccess(array.parse("""["str1", "str2"]"""), Literal.Array(Seq(Literal.String("str1"), Literal.String("str2"))))
-      assertSuccess(array.parse("""[[1, 2]]"""), Literal.Array(Seq(Literal.Array(Seq(Literal.Int(1), Literal.Int(2))))))
-      assertSuccess(array.parse("""[[1,2],[3,5]]"""), Literal.Array(Seq(Literal.Array(Seq(Literal.Int(1), Literal.Int(2))), Literal.Array(Seq(Literal.Int(3), Literal.Int(5))))))
+      assertSuccess(array.parse("[true, false]"), Literal(Seq(Literal(true), Literal(false))))
+      assertSuccess(array.parse("[1, 2]"), Literal(Seq(Literal(1), Literal(2))))
+      assertSuccess(array.parse("""["str1", "str2"]"""), Literal(Seq(Literal("str1"), Literal("str2"))))
+      assertSuccess(array.parse("""[[1, 2]]"""), Literal(Seq(Literal(Seq(Literal(1), Literal(2))))))
+      assertSuccess(array.parse("""[[1,2],[3,5]]"""), Literal(Seq(Literal(Seq(Literal(1), Literal(2))), Literal(Seq(Literal(3), Literal(5))))))
     }
     "parse assertion statement" in prop { data: (String, (String, Operation, Literal)) =>
       val (value, expected) = data
@@ -81,24 +81,24 @@ class ParserSpec
       assertSuccess(assertions.parse(data._1), data._2)
     }
     "parse check response body" in {
-      assertSuccess(Parser.check.parse("check response body field1 lt 4"), CheckResponseBody(FieldAssertion("field1", Lt, Literal.Int(4))))
+      assertSuccess(parser.check.parse("check response body field1 lt 4"), CheckResponseBody(FieldAssertion("field1", Lt, Literal(4))))
     }
     "parse check response header" in {
-      assertSuccess(Parser.check.parse("check response header field1 lt 4"), CheckResponseHeader(FieldAssertion("field1", Lt, Literal.Int(4))))
+      assertSuccess(parser.check.parse("check response header field1 lt 4"), CheckResponseHeader(FieldAssertion("field1", Lt, Literal(4))))
     }
     "not parse check if target is wrong" in {
-      assertFailure(Parser.check.parse("check response field1 lt 4"))
+      assertFailure(parser.check.parse("check response field1 lt 4"))
     }
     "parse send request with headers and check" in {
       val expr = "Send get request to http://localhost:8080 with headers Content-type:application/json,Accept:test and check response body field1.field2 lt 10"
       val expected = Seq((Request("http://localhost:8080", Get, Map("Content-type" -> "application/json", "Accept" -> "test")),
-        Seq(CheckResponseBody(FieldAssertion("field1.field2", Lt, Literal.Int(10))))))
+        Seq(CheckResponseBody(FieldAssertion("field1.field2", Lt, Literal(10))))))
       assertSuccess(program.parse(expr), expected)
     }
     "parse send request without headers but check" in {
       val expr = "Send get request to http://localhost:8080 and check response body field1.field2 lt 10"
       val expected = Seq((Request("http://localhost:8080", Get, Map.empty),
-        Seq(CheckResponseBody(FieldAssertion("field1.field2", Lt, Literal.Int(10))))))
+        Seq(CheckResponseBody(FieldAssertion("field1.field2", Lt, Literal(10))))))
       assertSuccess(program.parse(expr), expected)
     }
     "parse send request without headers and check" in {
@@ -112,8 +112,8 @@ object ParserSpec {
 
   val assertionsGen: Gen[(String, Assertion)] = {
 
-    val f1 = ("""field1 gt "f1"""", FieldAssertion("field1", Gt, Literal.String("f1")))
-    val f2 = ("""field2 lt "f2"""", FieldAssertion("field2", Lt, Literal.String("f2")))
+    val f1 = ("""field1 gt "f1"""", FieldAssertion("field1", Gt, Literal("f1")))
+    val f2 = ("""field2 lt "f2"""", FieldAssertion("field2", Lt, Literal("f2")))
 
     def and(lOp: String, rOp: String) = s"$lOp and $rOp"
 
@@ -136,8 +136,8 @@ object ParserSpec {
     parts <- Gen.choose(1, 10)
     fieldLength <- Gen.choose(1, 7)
     field <- Gen.listOfN(parts, Gen.listOfN(fieldLength, Gen.oneOf(alphaNumeric)).map(_.mkString)).map(_.mkString("."))
-    ops <- Gen.oneOf(IR.Operation.ops)
+    ops <- Gen.oneOf(Operation.ops)
     value <- Gen.listOfN(parts, Gen.listOfN(fieldLength, Gen.oneOf(alphaNumeric)).map(_.mkString)).map(_.mkString)
-  } yield (s"""$field $ops "$value"""", (field, Operation(ops), Literal.String(value)))
+  } yield (s"""$field $ops "$value"""", (field, Operation(ops), Literal(value)))
 
 }

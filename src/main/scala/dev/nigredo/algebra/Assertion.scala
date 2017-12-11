@@ -3,12 +3,12 @@ package dev.nigredo.algebra
 import cats.InjectK
 import cats.free.Free
 import cats.free.Free._
-import dev.nigredo.compiler.IR
-import dev.nigredo.compiler.IR.Operation
+import dev.nigredo.compiler._
+import dev.nigredo.compiler.model.Operation
 
 sealed trait Assertion[A]
 
-final case class Expr(operation: Operation, value1: String, value2: IR.Literal)
+final case class Expr(operation: Operation, value1: String, value2: Literal)
 
 final case class IsTrue(value: Expr) extends Assertion[Boolean]
 

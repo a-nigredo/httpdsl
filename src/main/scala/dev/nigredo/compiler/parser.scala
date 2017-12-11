@@ -1,27 +1,30 @@
 package dev.nigredo.compiler
 
-import dev.nigredo.compiler.IR._
 import fastparse.all._
 import fastparse.{all, core}
+import model._
 
-object Parser {
+object parser {
 
-  val OrToken = "or"
-  val AndToken = "and"
-  val multiValueSeparator = ','
+  final val Body = "body"
+  final val Header = "header"
+  final val OrToken = "or"
+  final val AndToken = "and"
+  final val multiValueSeparator = ','
+  final val NL = " \r\n"
+
   val alphaNumeric = ('0' to 'z').filter(_.isLetterOrDigit)
-  val NL = " \r\n"
   val multiValue = NL.+:(',')
   private val space: all.Parser[Unit] = P(CharsWhileIn(" \r\n")).?
 
-  val StringChars = NamedFunction(!"\"\\".contains(_: Char), "StringChars")
-  val boolean: core.Parser[IR.Literal, Char, String] = P("true" | "false").!.map(x => Literal.Boolean(x.toBoolean))
-  val digits: core.Parser[IR.Literal, Char, String] = P(CharsWhileIn('0' to '9')).!.map(x => Literal.Int(x.toInt))
-  val string: core.Parser[IR.Literal, Char, String] = P("\"" ~/ CharsWhile(StringChars).rep.! ~/ "\"").map(Literal.String.apply)
+  val boolean: core.Parser[Literal, Char, String] = P("true" | "false").!.map(x => Literal(x.toBoolean))
+  val digits: core.Parser[Literal, Char, String] = P(CharsWhileIn('0' to '9')).!.map(x => Literal(x.toInt))
+  val string: core.Parser[Literal, Char, String] =
+    P("\"" ~/ CharsWhile(NamedFunction(!"\"\\".contains(_: Char), "StringChars")).rep.! ~/ "\"").map(Literal.apply)
   val array: all.Parser[Literal] =
     P("[" ~/ (boolean | digits | string | array)
       .rep(sep = CharPred(x => NL.contains(x) || x == ',').rep)
-      .map(x => Literal.Array(x)) ~ "]")
+      .map(x => Literal(x)) ~ "]")
 
   case class NamedFunction[T, V](f: T => V, name: String) extends (T => V) {
     def apply(t: T): V = f(t)
@@ -41,11 +44,8 @@ object Parser {
 
   val headers = P(header.rep(min = 1, sep = multiValueSeparator.toString))
 
-  //TODO refactoring???
-  val path = P(CharIn(alphaNumeric).rep(1) ~/ ".".?)
-
   val assertion: all.Parser[(String, Operation, Literal)] =
-    P(path.rep(1).!
+    P(P(CharIn(alphaNumeric).rep(1) ~/ ".".?).rep(1).!
       ~/ space
       ~/ P("eq" | "neq" | ("gt" ~/ "e".?) | ("lt" ~/ "e".?) | "consist" | "sw" | "ew").!.map(Operation.apply)
       ~/ space
@@ -74,9 +74,6 @@ object Parser {
   private lazy val assertionsFactor: core.Parser[Assertion, Char, String] =
     P(space ~ (assertion.map(FieldAssertion.apply) | "(" ~ assertions ~ ")") ~ space)
 
-  val Body = "body"
-  val Header = "header"
-
   val check: core.Parser[Check, Char, String] =
     P("check".?
       ~ space
@@ -91,7 +88,7 @@ object Parser {
       }
     }
 
-  val program: core.Parser[Seq[IR], Char, String] =
+  val program: core.Parser[Seq[AST], Char, String] =
     P("Send"
       ~ space
       ~ P("get" | "put" | "post" | "delete").!.map(Method.apply)
