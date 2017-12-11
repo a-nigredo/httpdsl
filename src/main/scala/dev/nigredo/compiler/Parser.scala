@@ -15,13 +15,13 @@ object Parser {
   private val space: all.Parser[Unit] = P(CharsWhileIn(" \r\n")).?
 
   val StringChars = NamedFunction(!"\"\\".contains(_: Char), "StringChars")
-  val boolean: core.Parser[BooleanLiteral, Char, String] = P("true" | "false").!.map(x => BooleanLiteral(x.toBoolean))
-  val digits: core.Parser[NumberLiteral, Char, String] = P(CharsWhileIn('0' to '9')).!.map(x => NumberLiteral(x.toInt))
-  val string: core.Parser[StringLiteral, Char, String] = P("\"" ~/ CharsWhile(StringChars).rep.! ~/ "\"").map(StringLiteral.apply)
+  val boolean: core.Parser[IR.Literal, Char, String] = P("true" | "false").!.map(x => Literal.Boolean(x.toBoolean))
+  val digits: core.Parser[IR.Literal, Char, String] = P(CharsWhileIn('0' to '9')).!.map(x => Literal.Int(x.toInt))
+  val string: core.Parser[IR.Literal, Char, String] = P("\"" ~/ CharsWhile(StringChars).rep.! ~/ "\"").map(Literal.String.apply)
   val array: all.Parser[Literal] =
     P("[" ~/ (boolean | digits | string | array)
       .rep(sep = CharPred(x => NL.contains(x) || x == ',').rep)
-      .map(ArrayLiteral.apply) ~ "]")
+      .map(x => Literal.Array(x)) ~ "]")
 
   case class NamedFunction[T, V](f: T => V, name: String) extends (T => V) {
     def apply(t: T): V = f(t)

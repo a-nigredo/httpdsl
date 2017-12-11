@@ -1,6 +1,6 @@
 package dev.nigredo.compiler
 
-import dev.nigredo.compiler.IR._
+import dev.nigredo.compiler.IR.{Literal, _}
 import dev.nigredo.compiler.Parser._
 import fastparse.core.Parsed
 import org.scalacheck.{Arbitrary, Gen}
@@ -14,7 +14,7 @@ class ParserSpec
 
   import ParserSpec._
 
-  implicit def assertArbitrary: Arbitrary[(String, (String, Operation, StringLiteral))] = Arbitrary(assertGen)
+  implicit def assertArbitrary: Arbitrary[(String, (String, Operation, Literal))] = Arbitrary(assertGen)
 
   implicit def assertsBodyArbitrary: Arbitrary[(String, Assertion)] = Arbitrary(assertionsGen)
 
@@ -39,23 +39,23 @@ class ParserSpec
       assertSuccess(headers.parse("Content-type:app/json,Header1:v1"), Seq(("Content-type", "app/json"), ("Header1", "v1")))
     }
     "parse boolean literal" in {
-      assertSuccess(boolean.parse("true"), BooleanLiteral(true))
-      assertSuccess(boolean.parse("false"), BooleanLiteral(false))
+      assertSuccess(boolean.parse("true"), Literal.Boolean(true))
+      assertSuccess(boolean.parse("false"), Literal.Boolean(false))
     }
     "parse number literal" in prop { data: Int =>
-      assertSuccess(digits.parse(data.toString), NumberLiteral(data))
+      assertSuccess(digits.parse(data.toString), Literal.Int(data))
     }.setGen(Gen.choose(1, Int.MaxValue))
     "parse string literal" in prop { data: String =>
-      assertSuccess(string.parse(s""""$data""""), StringLiteral(data))
+      assertSuccess(string.parse(s""""$data""""), Literal.String(data))
     }.setGen(Gen.alphaNumStr)
     "parse array literal" in {
-      assertSuccess(array.parse("[true, false]"), ArrayLiteral(Seq(BooleanLiteral(true), BooleanLiteral(false))))
-      assertSuccess(array.parse("[1, 2]"), ArrayLiteral(Seq(NumberLiteral(1), NumberLiteral(2))))
-      assertSuccess(array.parse("""["str1", "str2"]"""), ArrayLiteral(Seq(StringLiteral("str1"), StringLiteral("str2"))))
-      assertSuccess(array.parse("""[[1, 2]]"""), ArrayLiteral(Seq(ArrayLiteral(Seq(NumberLiteral(1), NumberLiteral(2))))))
-      assertSuccess(array.parse("""[[1,2],[3,5]]"""), ArrayLiteral(Seq(ArrayLiteral(Seq(NumberLiteral(1), NumberLiteral(2))), ArrayLiteral(Seq(NumberLiteral(3), NumberLiteral(5))))))
+      assertSuccess(array.parse("[true, false]"), Literal.Array(Seq(Literal.Boolean(true), Literal.Boolean(false))))
+      assertSuccess(array.parse("[1, 2]"), Literal.Array(Seq(Literal.Int(1), Literal.Int(2))))
+      assertSuccess(array.parse("""["str1", "str2"]"""), Literal.Array(Seq(Literal.String("str1"), Literal.String("str2"))))
+      assertSuccess(array.parse("""[[1, 2]]"""), Literal.Array(Seq(Literal.Array(Seq(Literal.Int(1), Literal.Int(2))))))
+      assertSuccess(array.parse("""[[1,2],[3,5]]"""), Literal.Array(Seq(Literal.Array(Seq(Literal.Int(1), Literal.Int(2))), Literal.Array(Seq(Literal.Int(3), Literal.Int(5))))))
     }
-    "parse assertion statement" in prop { data: (String, (String, Operation, StringLiteral)) =>
+    "parse assertion statement" in prop { data: (String, (String, Operation, Literal)) =>
       val (value, expected) = data
       assertSuccess(assertion.parse(value), expected)
     }
@@ -81,10 +81,10 @@ class ParserSpec
       assertSuccess(assertions.parse(data._1), data._2)
     }
     "parse check response body" in {
-      assertSuccess(Parser.check.parse("check response body field1 lt 4"), CheckResponseBody(FieldAssertion("field1", Lt, NumberLiteral(4))))
+      assertSuccess(Parser.check.parse("check response body field1 lt 4"), CheckResponseBody(FieldAssertion("field1", Lt, Literal.Int(4))))
     }
     "parse check response header" in {
-      assertSuccess(Parser.check.parse("check response header field1 lt 4"), CheckResponseHeader(FieldAssertion("field1", Lt, NumberLiteral(4))))
+      assertSuccess(Parser.check.parse("check response header field1 lt 4"), CheckResponseHeader(FieldAssertion("field1", Lt, Literal.Int(4))))
     }
     "not parse check if target is wrong" in {
       assertFailure(Parser.check.parse("check response field1 lt 4"))
@@ -92,13 +92,13 @@ class ParserSpec
     "parse send request with headers and check" in {
       val expr = "Send get request to http://localhost:8080 with headers Content-type:application/json,Accept:test and check response body field1.field2 lt 10"
       val expected = Seq((Request("http://localhost:8080", Get, Map("Content-type" -> "application/json", "Accept" -> "test")),
-        Seq(CheckResponseBody(FieldAssertion("field1.field2", Lt, NumberLiteral(10))))))
+        Seq(CheckResponseBody(FieldAssertion("field1.field2", Lt, Literal.Int(10))))))
       assertSuccess(program.parse(expr), expected)
     }
     "parse send request without headers but check" in {
       val expr = "Send get request to http://localhost:8080 and check response body field1.field2 lt 10"
       val expected = Seq((Request("http://localhost:8080", Get, Map.empty),
-        Seq(CheckResponseBody(FieldAssertion("field1.field2", Lt, NumberLiteral(10))))))
+        Seq(CheckResponseBody(FieldAssertion("field1.field2", Lt, Literal.Int(10))))))
       assertSuccess(program.parse(expr), expected)
     }
     "parse send request without headers and check" in {
@@ -112,8 +112,8 @@ object ParserSpec {
 
   val assertionsGen: Gen[(String, Assertion)] = {
 
-    val f1 = ("""field1 gt "f1"""", FieldAssertion("field1", Gt, StringLiteral("f1")))
-    val f2 = ("""field2 lt "f2"""", FieldAssertion("field2", Lt, StringLiteral("f2")))
+    val f1 = ("""field1 gt "f1"""", FieldAssertion("field1", Gt, Literal.String("f1")))
+    val f2 = ("""field2 lt "f2"""", FieldAssertion("field2", Lt, Literal.String("f2")))
 
     def and(lOp: String, rOp: String) = s"$lOp and $rOp"
 
@@ -132,12 +132,12 @@ object ParserSpec {
     ))
   }
 
-  val assertGen: Gen[(String, (String, Operation, StringLiteral))] = for {
+  val assertGen: Gen[(String, (String, Operation, Literal))] = for {
     parts <- Gen.choose(1, 10)
     fieldLength <- Gen.choose(1, 7)
     field <- Gen.listOfN(parts, Gen.listOfN(fieldLength, Gen.oneOf(alphaNumeric)).map(_.mkString)).map(_.mkString("."))
     ops <- Gen.oneOf(IR.Operation.ops)
     value <- Gen.listOfN(parts, Gen.listOfN(fieldLength, Gen.oneOf(alphaNumeric)).map(_.mkString)).map(_.mkString)
-  } yield (s"""$field $ops "$value"""", (field, Operation(ops), StringLiteral(value)))
+  } yield (s"""$field $ops "$value"""", (field, Operation(ops), Literal.String(value)))
 
 }

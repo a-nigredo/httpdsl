@@ -1,27 +1,30 @@
 package dev.nigredo.compiler
 
+import iota.TList.::
+import iota._
+
 object IR {
 
   type IR = (Request, Seq[Check])
+  type Literal = Cop[Seq[Value] :: String :: Int :: Boolean :: TNil]
 
-  sealed trait Literal
+  final case class Value(value: Literal)
 
-  final case class StringLiteral(value: String) extends Literal
+  object Value {
+    implicit def Value2Literal(value: Value): Literal = value.value
 
-  final case class BooleanLiteral(value: Boolean) extends Literal
+    implicit def SeqValue2SeqLiteral(value: Seq[Value]): Seq[Literal] = value.map(_.value)
 
-  final case class NumberLiteral(value: Int) extends Literal
+    implicit def Literal2Value(literal: Literal): Value = Value(literal)
 
-  final case class ArrayLiteral(value: Seq[Literal]) extends Literal
+    implicit def SeqLiteral2SeqValue(literal: Seq[Literal]): Seq[Value] = literal.map(Value.apply)
+  }
 
   object Literal {
-    def apply(value: String): Literal = StringLiteral(value)
-
-    def apply(value: Boolean): Literal = BooleanLiteral(value)
-
-    def apply(value: Int): Literal = NumberLiteral(value)
-
-    def apply(value: Seq[Literal]): Literal = ArrayLiteral(value)
+    val String: Cop.Inject[String, Literal] = Cop.Inject[String, Literal]
+    val Int: Cop.Inject[Int, Literal] = Cop.Inject[Int, Literal]
+    val Boolean: Cop.Inject[Boolean, Literal] = Cop.Inject[Boolean, Literal]
+    val Array: Cop.Inject[Seq[Value], Literal] = Cop.Inject[Seq[Value], Literal]
   }
 
   sealed trait Operation

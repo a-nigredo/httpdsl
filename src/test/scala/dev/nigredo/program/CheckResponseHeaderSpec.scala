@@ -8,14 +8,11 @@ import dev.nigredo.compiler.IR
 import dev.nigredo.compiler.IR._
 import org.specs2.mutable.Specification
 
-/**
-  * Created by ai48281 on 11/9/2017.
-  */
 class CheckResponseHeaderSpec extends Specification {
   "Test" should {
     "test" in {
       val resp = Response("", 203, Map("field1" -> "1"))
-      val assertion = Or(FieldAssertion("field1", Gt, NumberLiteral(2)), FieldAssertion("field1", Gt, NumberLiteral(1)))
+      val assertion = Or(FieldAssertion("field1", Gt, Literal.Int(2)), FieldAssertion("field1", Gt, Literal.Int(1)))
       val cr = IR.CheckResponseHeader(assertion)
       import dev.nigredo.algebra.ResponseHeaderOps._
       import dev.nigredo.algebra.AssertionOps._
@@ -45,7 +42,7 @@ class CheckResponseHeaderSpec extends Specification {
       }
       val int: Program ~> Id = Ass or Rh
       val r = checkResponseHeader(resp)(cr).foldMap(int)
-      r mustEqual("success")
+      r mustEqual "success"
     }
   }
 }

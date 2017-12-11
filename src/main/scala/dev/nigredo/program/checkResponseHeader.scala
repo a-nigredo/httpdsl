@@ -26,9 +26,9 @@ object checkResponseHeader extends (Response => CheckResponseHeader => Free[Prog
         for {
           headerValue <- extractResponseHeaderValue(headers)(name)
           result <- lit match {
-            case NumberLiteral(v) => asInt(CompareValue[Int](op, headerValue, v))
-            case BooleanLiteral(v) => asBoolean(CompareValue[Boolean](op, headerValue, v))
-            case StringLiteral(v) => asString(CompareValue[String](op, headerValue, v))
+            case Literal.Int(v) => asInt(CompareValue[Int](op, headerValue, v))
+            case Literal.Boolean(v) => asBoolean(CompareValue[Boolean](op, headerValue, v))
+            case Literal.String(v) => asString(CompareValue[String](op, headerValue, v))
           }
         } yield result
       }
