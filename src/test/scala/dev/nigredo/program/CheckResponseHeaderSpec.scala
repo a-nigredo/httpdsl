@@ -5,17 +5,15 @@ import dev.nigredo.Model.Response
 import dev.nigredo.algebra.ResponseHeader.Program
 import dev.nigredo.algebra._
 import dev.nigredo.compiler.IR
-import dev.nigredo.compiler.IR._
+import dev.nigredo.compiler.IR.{FieldAssertion, Gt, Literal, Operation}
 import org.specs2.mutable.Specification
 
 class CheckResponseHeaderSpec extends Specification {
   "Test" should {
     "test" in {
       val resp = Response("", 203, Map("field1" -> "1"))
-      val assertion = Or(FieldAssertion("field1", Gt, Literal.Int(2)), FieldAssertion("field1", Gt, Literal.Int(1)))
+      val assertion = IR.Or(FieldAssertion("field1", Gt, Literal.Int(2)), FieldAssertion("field1", Gt, Literal.Int(1)))
       val cr = IR.CheckResponseHeader(assertion)
-      import dev.nigredo.algebra.ResponseHeaderOps._
-      import dev.nigredo.algebra.AssertionOps._
 
       object Rh extends (ResponseHeader ~> Id) {
         override def apply[A](fa: ResponseHeader[A]) = fa match {
@@ -23,11 +21,11 @@ class CheckResponseHeaderSpec extends Specification {
           case ExtractResponseHeaderValue(headers, fieldName) => headers(fieldName)
         }
       }
-      object Ass extends (dev.nigredo.algebra.Assertion ~> Id) {
-        override def apply[A](fa: dev.nigredo.algebra.Assertion[A]) = fa match {
-          case AssertionAsInt(value) => value.value1.toInt == value.value2
-          case AssertionResult(true) => "success"
-          case AssertionResult(false) => "error"
+      object Ass extends (Assertion ~> Id) {
+        override def apply[A](fa: Assertion[A]) = fa match {
+          case IsTrue(Expr(_, value1, Literal.Int(value2))) => value1.toInt == value2
+          case Result(true) => "success"
+          case Result(false) => "error"
         }
 
         private def genCompare[A](op: Operation)(lOp: A)(rOp: A)(implicit ordering: Ordering[A]): Boolean =
@@ -37,7 +35,7 @@ class CheckResponseHeaderSpec extends Specification {
             case IR.Gt => ordering.gt(lOp, rOp)
             case IR.Gte => ordering.gteq(lOp, rOp)
             case IR.Lt => ordering.lt(lOp, rOp)
-            case IR.Lte => ordering.lt(lOp, rOp)
+            case IR.Lte => ordering.lteq(lOp, rOp)
           }
       }
       val int: Program ~> Id = Ass or Rh
