@@ -1,7 +1,7 @@
 package dev.nigredo
 
 import cats.effect.IO
-import dev.nigredo.Model.Snippet
+import dev.nigredo.model.Snippet
 import io.circe.generic.auto._
 import org.http4s.circe._
 

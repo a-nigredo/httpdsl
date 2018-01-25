@@ -1,7 +1,7 @@
 package dev.nigredo.program
 
 import cats.{Id, ~>}
-import dev.nigredo.Model.Response
+import dev.nigredo.ResponseModel
 import dev.nigredo.algebra._
 import dev.nigredo.compiler.Literal
 import dev.nigredo.compiler.model._
@@ -9,10 +9,11 @@ import dev.nigredo.program.CheckResponseHeaderSpec.{AssertionHeaderProgram, Resp
 import org.specs2.mutable.Specification
 
 class CheckResponseHeaderSpec extends Specification {
+
   "Check response header" should {
     "pass" in {
       val assertion = FieldAssertion("field1", Gt, Literal(1))
-      checkResponseHeader(Response("", 200, Map("field1" -> "2")))(CheckResponseHeader(assertion))
+      checkResponseHeader(new ResponseModel("", 200, Map("field1" -> "2")))(CheckResponseHeader(assertion))
         .foldMap(AssertionHeaderProgram or ResponseHeaderProgram) mustEqual "success"
     }
   }
@@ -20,13 +21,13 @@ class CheckResponseHeaderSpec extends Specification {
 
 object CheckResponseHeaderSpec {
 
-  object ResponseHeaderProgram extends (ResponseHeader ~> Id) {
-    override def apply[A](fa: ResponseHeader[A]) = fa match {
-      case ExtractResponseHeaders(response) => response.headers
-      case ExtractResponseHeaderValue(headers, fieldName) => headers(fieldName)
+  object ResponseHeaderProgram extends (Response ~> Id) {
+    override def apply[A](fa: Response[A]) = fa match {
+      case ExtractHeader(resp, fieldName) => resp.headers(fieldName)
+      case ExtractBody(resp) => resp.body
+      case ExtractStatusCode(resp) => resp.code
     }
   }
-
 
   object AssertionHeaderProgram extends (dev.nigredo.algebra.Assertion ~> Id) {
     override def apply[A](fa: dev.nigredo.algebra.Assertion[A]) = fa match {
